@@ -103,7 +103,7 @@ Let me know if that helps or if you want to discuss raising the limit.
 
 ## Notes
 
-- I did not reproduce the error locally. I did not add unthrottled capture calls to confirm whether the rate limit error actually appears, and I did not measure the exact burst window behavior of the SDK.
+- I did not reproduce the error locally. I added a test button that fires 100 rapid capture calls but did not click it to check for the rate limit error. I also did not measure the exact burst window behavior of the SDK.
 
 ---
 
