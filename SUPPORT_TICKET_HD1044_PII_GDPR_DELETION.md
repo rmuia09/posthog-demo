@@ -1,9 +1,10 @@
-# Support Ticket HD-1044 — Accidental PII Leak & GDPR Deletion
+# Practice Ticket HD-1044 — Accidental PII Leak & GDPR Deletion
 
-**Status:** Resolved  
+*Practice ticket written from a sample question, not a real customer.*
+
+**Status:** Practice  
 **Priority:** Critical  
 **Type:** Privacy / Data Governance  
-**Customer:** Global Retailer  
 **Assigned to:** R. Muia  
 **Created:** 2026-11-07
 
@@ -13,7 +14,7 @@
 
 Hi,
 
-We accidentally captured Personally Identifiable Information (PII) as a person property in a user profile. We need to erase this sensitive data immediately for GDPR compliance, without corrupting or deleting our historical aggregate usage metrics.
+We accidentally captured Personally Identifiable Information (PII) as a person property. We need to erase this sensitive data immediately for GDPR compliance, without corrupting or deleting our historical aggregate usage metrics.
 
 Please advise on the remediation process.
 
@@ -21,10 +22,9 @@ Thanks
 
 ---
 
-## Investigation
+## What I checked
 
-### 1. Confirmed the leak
-In HogDesk Lite, a ticket submitted with an email in the description was captured as a person property:
+**Captured test data:** I submitted a ticket through HogDesk Lite with an email address in the description:
 
 ```bash
 POST /api/v1/tickets/route
@@ -36,50 +36,46 @@ POST /api/v1/tickets/route
 }
 ```
 
-The email `jane.doe@example.com` was stored as part of the person profile.
+**Person vs event:** I confirmed the email was stored on the person profile. I did **not** confirm whether the leaked value is copied onto historical events themselves, not just the person. I don't know yet whether deleting the person also scrubs the value from event properties — that would need testing against the actual leaked string.
 
-### 2. Evaluated deletion constraints
-PostHog’s event store is immutable — historical events cannot be edited in place. However, person properties can be updated or deleted, and formal deletion requests can purge historical events matching specific conditions. Aggregate metrics remain valid because event counts are not altered, only the associated person properties are removed.
+**Deletion flow:** In PostHog, you can delete a person from the Persons page. There is an option to delete their events too (`delete_events=true`), and deletion is processed asynchronously. I did **not** confirm the exact Deletion Requests workflow with conditions, so I won't present it as a verified step.
 
 ---
 
 ## Solution
 
-### Step 1: Invalidate the property via Dashboard
-
-Navigate to **Persons** in PostHog, search for the affected profile ID, and delete or overwrite the sensitive property with an empty string.
-
-### Step 2: Programmatic purge via API
-
-Issue a targeted payload update to remove the property value across tracking entities.
-
-### Step 3: Historical event purge
-
-Navigate to **Settings → Data Management → Deletion Requests** and submit a localized deletion condition targeting historical events that contained the leaked string values. This guarantees permanent structural removal of the PII from the event store.
+1. **Persons page:** Go to the person's profile in PostHog and delete the sensitive property (or the whole person if appropriate).
+2. **Delete associated events (optional):** When deleting the person, you can include their events in the same request. This is asynchronous.
+3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
 
 ---
 
-## What we told the customer
+## Reply to customer
 
-> We recommend a three-step isolation strategy:
-> 1. Delete or overwrite the PII property in the Persons dashboard.
-> 2. Use the API to purge the value programmatically.
-> 3. Submit a deletion request under Data Management → Deletion Requests targeting historical events containing the leaked value.
->
-> This removes the PII completely while preserving your aggregate event counts and metrics.
+Hey,
+
+To remove the PII:
+
+1. Go to the person's profile in PostHog and delete the sensitive property (or delete the whole person if that's cleaner).
+2. When deleting, you can include their events in the same request — it's processed asynchronously.
+3. One thing to check: is the PII only on the person profile, or is it also in historical events? I haven't confirmed that yet, so it's worth verifying before we assume the person deletion scrubs everything.
+
+Deleting the person removes the person attributes; your aggregate event counts stay intact unless you also choose to delete the events.
+
+Let me know what you find on step 3 and I can help with the rest.
 
 ---
 
-## Internal notes
+## Notes
 
-- Confirm the exact leaked string values before submitting a deletion request.
-- Deletion requests are irreversible — double-check conditions before submitting.
-- Person property deletion does not delete the underlying events; it removes the associated person attributes. For full event-level deletion, use Data Management.
+- Deleting a person is irreversible for that profile.
+- I did not verify whether event-level PII requires a separate deletion request or if `delete_events=true` covers it.
+- "I don't know yet" is an acceptable answer here until I test against the actual leaked value.
 
 ---
 
 ## Related
 
 Repo: https://github.com/rmuia09/posthog-demo  
-Backend capture example: `backend/main.py`  
-PII audit SQL: `sql/insights.sql` (PII property audit query)
+Backend capture: `backend/main.py`  
+PII audit SQL: `sql/insights.sql`
