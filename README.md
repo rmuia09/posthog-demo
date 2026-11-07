@@ -1,6 +1,6 @@
-# HogDesk Lite — Engineering Showcase & Support Blueprint
+# HogDesk Lite
 
-HogDesk Lite is a small ticketing router I built to show how I approach PostHog support problems. It captures events through a React frontend and FastAPI backend, then runs SQL Insights against the event data.
+A ticketing router I built to work through PostHog support problems. It captures events through a React frontend and FastAPI backend, then queries them with HogQL in SQL Insights.
 
 ---
 
@@ -10,7 +10,7 @@ HogDesk Lite is a small ticketing router I built to show how I approach PostHog 
 |-------|------|---------|
 | Frontend | React + `posthog-js` | Mock checkout screen + throttled video player with client-side event tracking |
 | Backend | FastAPI + `posthog-python` | Ticket routing API, payload validation, server-side rate limiting |
-| Analytics | ClickHouse / SQL Insights | Raw HogQL queries against the `events` table |
+| Analytics | ClickHouse / HogQL | Raw HogQL queries against the `events` table |
 
 ---
 
@@ -71,7 +71,7 @@ See: `sql/insights.sql`
 ### Problem 2: Video Player Client Rate Limiting
 **Issue:** Browser console shows `[Posthog error]: This capture call is ignored due to client rate limiting.` when tracking inside an unthrottled `onTimeUpdate` loop.
 
-**Solution:** Implement client-side throttling so tracking fires at most once every 5 seconds instead of every millisecond. `posthog-js` has a configurable `rate_limiting` option (default: 10 events/sec with a burst allowance), but raising it should not be the first move — the limit protects the user's browser. See `frontend/src/components/VideoPlayer.jsx`:
+**Solution:** Implement client-side throttling so tracking fires at most once every 5 seconds instead of on every timeupdate event. `posthog-js` has a configurable `rate_limiting` option (default: 10 events/sec with a burst allowance), but raising it should not be the first move — the limit protects the user's browser. See `frontend/src/components/VideoPlayer.jsx`:
 
 ```javascript
 import { useRef } from 'react'
@@ -99,7 +99,7 @@ The backend rate limiter in `backend/main.py` uses the same principle — 60 req
 
 ---
 
-### Problem 3: Accidental PII Leaks & GDPR Deletion
+### Problem 3: PII in a person property
 **Issue:** PII captured as a person property must be erased for GDPR compliance without corrupting historical aggregate metrics.
 
 **Solution:** Multi-step isolation strategy:

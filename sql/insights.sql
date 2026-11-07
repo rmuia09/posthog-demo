@@ -1,5 +1,5 @@
 -- ============================================================================
--- HogDesk Lite — SQL Insights (ClickHouse / PostHog Data Layer)
+-- HogDesk Lite — HogQL Insights (PostHog / ClickHouse-compatible)
 -- ============================================================================
 -- These queries run directly against the `events` table in PostHog's
 -- ClickHouse warehouse via SQL Insights.

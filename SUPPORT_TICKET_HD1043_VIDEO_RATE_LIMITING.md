@@ -91,7 +91,7 @@ Hey,
 
 The rate limit in posthog-js defaults to 10 capture calls per second (with a burst of 10x that). It's configurable, but I'd suggest throttling on your side first rather than raising it — the limit exists to protect your users' browsers from event floods.
 
-Since `onTimeUpdate` only fires about 4 times per second, a single video shouldn't normally hit the limit. If you're seeing the error, something else is probably firing capture calls too. Can you share what else is tracking on that page?
+Since `onTimeUpdate` can fire at varying rates depending on the browser, a single video may not hit the limit on its own — so something else on the page may be sending events too. Can you share what else is tracking on that page?
 
 In the meantime, here's a throttled version of your video player that logs progress at most once every 5 seconds:
 
@@ -103,8 +103,7 @@ Let me know if that helps or if you want to discuss raising the limit.
 
 ## Notes
 
-- I did not reproduce the error locally because one video at ~4Hz shouldn't breach 10/sec.
-- Backend rate limiting in HogDesk Lite (`/api/v1/checkout`, `/api/v1/tickets/route`) uses the same principle — 60 requests per user per minute, returning 429 when exceeded.
+- I did not reproduce the error locally. I did not add unthrottled capture calls to confirm whether the rate limit error actually appears, and I did not measure the exact burst window behavior of the SDK.
 
 ---
 
