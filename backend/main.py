@@ -116,3 +116,9 @@ async def route_ticket(payload: TicketPayload, request: Request):
 @app.get("/api/v1/health")
 async def health():
     return {"status": "healthy", "service": "hogdesk-lite"}
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    posthog.flush()
+    posthog.shutdown()
