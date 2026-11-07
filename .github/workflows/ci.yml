@@ -9,8 +9,6 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      # No external services needed; FastAPI runs locally in the job
     steps:
       - uses: actions/checkout@v4
 
