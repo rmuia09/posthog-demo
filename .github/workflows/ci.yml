@@ -32,6 +32,16 @@ jobs:
           sleep 3
           curl -sf http://localhost:8000/api/v1/health
 
+      - name: Generate test events for PostHog
+        working-directory: ./backend
+        run: |
+          curl -sf -X POST http://localhost:8000/api/v1/checkout \
+            -H 'Content-Type: application/json' \
+            -d '{"user_id":"ci_weekday_test","currency":"KES","amount":1500,"environment":"production"}'
+          curl -sf -X POST http://localhost:8000/api/v1/tickets/route \
+            -H 'Content-Type: application/json' \
+            -d '{"user_id":"ci_weekday_test","category":"billing","description":"CI generated event for weekday analysis","priority":"normal"}'
+
       - name: Run behave BDD tests
         working-directory: ./backend/tests
         run: behave
