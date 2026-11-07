@@ -102,7 +102,7 @@ The backend rate limiter in `backend/main.py` uses the same principle — 60 req
 ### Problem 3: PII in a person property
 **Issue:** PII captured as a person property must be erased for GDPR compliance without corrupting historical aggregate metrics.
 
-**Solution:** Multi-step isolation strategy:
+**Solution:**
 1. **Persons tab:** Search the affected profile. I haven't confirmed you can delete a single property in the UI — deleting the whole person is the documented path.
 2. **Delete associated events (optional):** When deleting the person, you can include their events — note this removes them from your counts too.
 3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.

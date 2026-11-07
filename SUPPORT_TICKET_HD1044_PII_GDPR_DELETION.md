@@ -44,9 +44,9 @@ POST /api/v1/tickets/route
 
 ## Solution
 
-1. **Persons page:** Go to the person's profile in PostHog and delete the sensitive property (or the whole person if appropriate).
-2. **Delete associated events (optional):** When deleting the person, you can include their events in the same request. This is asynchronous.
-3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
+1. **Delete the person** from their profile page in PostHog. When deleting, you can include their events — note this removes them from your counts too.
+2. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
+3. **Single-property deletion:** I haven't confirmed whether the UI lets you delete a single property on a person profile — deleting the whole person is the path I'd describe until tested.
 
 ---
 
@@ -56,15 +56,15 @@ Hey,
 
 To remove the PII:
 
-1. Go to the person's profile in PostHog and delete the sensitive property (or delete the whole person if that's cleaner).
-2. When deleting, you can include their events in the same request — it's processed asynchronously.
-3. One thing to check: is the PII only on the person profile, or is it also in historical events? I haven't confirmed that yet, so it's worth verifying before we assume the person deletion scrubs everything.
+1. Delete the person from their profile page in PostHog. When deleting, you can include their events in the same request — it's processed asynchronously.
+2. One thing to check: is the PII only on the person profile, or is it also in historical events? I haven't confirmed that yet, so it's worth verifying before we assume the person deletion scrubs everything.
+3. I haven't confirmed whether the UI lets you delete a single property on a person profile, so I'd describe deleting the whole person as the safer path until we test it.
 
 Deleting the person removes the person attributes; your aggregate event counts stay intact unless you also choose to delete the events. Deleting a person's events also removes them from your counts, so you'll need to decide which matters more.
 
 If the leaked value exists on historical events and you can't remove it without losing counts you need to keep, say so — I'd escalate to find out what's possible rather than delete something you can't get back.
 
-Let me know what you find on step 3 and I can help with the rest.
+Let me know what you find on step 2 and I can help with the rest.
 
 ---
 
