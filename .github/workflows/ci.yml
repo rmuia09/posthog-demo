@@ -50,7 +50,7 @@ jobs:
 
       - name: Run behave BDD tests
         working-directory: ./backend/tests
-        run: behave -f junit -o behave-junit.xml
+        run: behave > behave-results.txt 2>&1
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
@@ -59,7 +59,7 @@ jobs:
         if: always()
         with:
           name: behave-results
-          path: backend/tests/behave-junit.xml
+          path: backend/tests/behave-results.txt
 
   frontend:
     runs-on: ubuntu-latest
