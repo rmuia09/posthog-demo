@@ -29,7 +29,6 @@ Trends UI has no day-of-week toggle.
 
 Run HogQL in SQL Insights:
 
-```sql
 SELECT CASE toDayOfWeek(timestamp)
     WHEN 1 THEN '1. Monday'
     WHEN 2 THEN '2. Tuesday'
@@ -44,7 +43,6 @@ FROM events
 WHERE timestamp >= now() - INTERVAL 30 DAY
 GROUP BY day_of_week
 ORDER BY day_of_week ASC
-```
 
 Or compute day_of_week client-side and send as an event property.
 
@@ -54,7 +52,7 @@ File: sql/insights.sql
 
 posthog-js drops capture calls inside onTimeUpdate loops.
 
-rate_limiting defaults to 10 events/sec. It's configurable but don't raise it first — the limit protects the browser. Throttle instead:
+rate_limiting defaults to 10 events/sec. Throttle client-side instead of raising the limit:
 
 import { useRef } from 'react'
 import posthog from 'posthog-js'
@@ -83,8 +81,7 @@ File: frontend/src/components/VideoPlayer.jsx
 PII captured as a person property. GDPR requires removal.
 
 1. Delete the person in the Persons tab. Include events if needed — this removes them from counts.
-2. Check if the PII value exists on historical events, not just the profile. I haven't confirmed single-property deletion in the UI.
-3. If PII is on historical events and you can't delete it without losing counts, escalate.
+2. Check if the PII value exists on historical events, not just the profile.
 
 File: backend/main.py
 

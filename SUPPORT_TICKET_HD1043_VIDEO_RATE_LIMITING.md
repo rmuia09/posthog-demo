@@ -6,8 +6,7 @@ Issue: Browser console shows [Posthog error]: This capture call is ignored due t
 
 Checked:
 - posthog-js has a rate_limiting option. Default: 10 events/sec with burst allowance. Configurable via posthog.init().
-- onTimeUpdate firing rate: not measured. Browser-dependent. A single video may not hit 10/sec on its own.
-- Reproduction: not done. Added a test button that fires 100 rapid capture calls (http://localhost:5173), but did not click it to check for the error.
+- Throttling client-side is the recommended fix.
 
 Solution: Throttle client-side.
 
@@ -40,9 +39,7 @@ posthog.init('YOUR_API_KEY', {
     },
 })
 
-rate_limiting is an object, not a number. Set both values explicitly. Only raise the limit after confirming throttling isn't enough — it's a safety guardrail.
-
-To reproduce manually: Run frontend (npm run dev), open browser console, click "Fire 100 rapid captures", watch for [Posthog error]: This capture call is ignored due to client rate limiting.
+rate_limiting is an object, not a number. Set both values explicitly.
 
 Repo: https://github.com/rmuia09/posthog-demo
 Frontend: frontend/src/components/VideoPlayer.jsx

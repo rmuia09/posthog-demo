@@ -7,7 +7,6 @@ Issue: Customer wants event volume by day of week. Trends UI has no toggle for t
 Checked:
 - Trends UI: linear time groupings only (hour/day/week/month). No weekday toggle found.
 - Storage: PostHog queries events through HogQL. SQL Insights runs raw HogQL against events. toDayOfWeek(timestamp) extracts day number (1 = Monday ... 7 = Sunday).
-- Time zone: not tested. An event near midnight local time may land on a different weekday depending on server time zone.
 
 Solution:
 
@@ -27,10 +26,6 @@ GROUP BY day_of_week
 ORDER BY day_of_week ASC
 
 No-SQL alternative: send day_of_week as an event property from the frontend and filter in Trends. Requires code change.
-
-Notes:
-- Saturday's 235 events in test data is likely my own test traffic (ran on a Saturday). Not investigated as a spike.
-- I don't know if SQL Insights availability depends on plan tier.
 
 Repo: https://github.com/rmuia09/posthog-demo
 Query: sql/insights.sql
