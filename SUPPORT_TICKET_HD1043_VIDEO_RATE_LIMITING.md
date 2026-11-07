@@ -30,7 +30,7 @@ Thanks
 
 **onTimeUpdate frequency:** I didn't measure the real `onTimeUpdate` firing rate in Chrome or Firefox. The HTML spec doesn't guarantee a fixed rate — it depends on the browser and playback implementation. A single video playing normally may or may not hit a 10-per-second limit on its own. If the customer is actually seeing the error, something else is likely firing capture calls too — I'd ask them to share console logs and check for other capture sites before telling them to raise the limit.
 
-**What I did not do:** I did not reproduce the error locally. I also did not measure the exact burst window behavior of the SDK, or add unthrottled capture calls to confirm whether the rate limit error actually appears.
+**What I did not do:** I did not reproduce the error locally. I added a test button to the frontend that fires 100 rapid capture calls (available when running locally at `http://localhost:5173`), but I did not click it and check the console for the rate limit error. I also did not measure the exact burst window behavior of the SDK.
 
 ---
 
