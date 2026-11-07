@@ -57,6 +57,17 @@ export default function App() {
           <b>FastAPI</b> + <b>posthog-python</b> &middot; Analytics:
           <b>ClickHouse / SQL Insights</b>
         </p>
+        <button
+          onClick={() => {
+            for (let i = 0; i < 100; i++) {
+              posthog.capture('rate_limit_test', { i })
+            }
+            console.log('Fired 100 rapid capture calls')
+          }}
+          style={{ marginTop: 12, padding: '8px 16px', cursor: 'pointer' }}
+        >
+          Fire 100 rapid captures (test rate limit)
+        </button>
       </footer>
     </div>
   )
