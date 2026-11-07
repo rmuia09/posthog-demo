@@ -186,14 +186,20 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:
 
 **Secrets:** Add `POSTHOG_API_KEY` in your GitHub repository Settings → Secrets and variables → Actions. The frontend tests use it to initialize `posthog-js`.
 
-**Locally:**
-```bash
-# Backend
-cd backend && source .venv/bin/activate && behave
+**Locally — Run Everything at Once:**
 
-# Frontend (requires Node 20+)
-cd frontend && npm ci && npx playwright install --with-deps chromium && npm test
+```bash
+# From project root (starts backend + frontend, runs Playwright, cleans up)
+chmod +x test-local.sh
+bash test-local.sh
+
+# Or via npm
+cd frontend
+npm run test:local
 ```
+
+**Requirements:** Node 20+ for Playwright, Python 3.11+ for the backend.
+
 
 ---
 
