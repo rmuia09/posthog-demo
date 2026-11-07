@@ -50,9 +50,16 @@ jobs:
 
       - name: Run behave BDD tests
         working-directory: ./backend/tests
-        run: behave
+        run: behave -f junit -o behave-junit.xml
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+
+      - name: Upload behave test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: behave-results
+          path: backend/tests/behave-junit.xml
 
   frontend:
     runs-on: ubuntu-latest
@@ -98,7 +105,7 @@ jobs:
           sleep 3
           curl -sf http://localhost:8000/api/v1/health
 
-      - name: Start frontend dev server (for Playwright webServer reuse)
+      - name: Start frontend dev server
         working-directory: ./frontend
         run: |
           npm run dev &
@@ -110,4 +117,13 @@ jobs:
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_HOST: https://us.i.posthog.com
-        run: npx playwright test
+        run: npx playwright test --reporter=junit,html
+
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
