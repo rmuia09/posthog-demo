@@ -1,50 +1,45 @@
 # HogDesk Lite
 
-A ticketing router I built to work through PostHog support problems. It captures events through a React frontend and FastAPI backend, then queries them with HogQL in SQL Insights.
+Ticketing router for PostHog support problems. React frontend, FastAPI backend, HogQL queries.
 
 ---
 
-## Architecture
+## Stack
 
-| Layer | Tech | Purpose |
-|-------|------|---------|
-| Frontend | React + `posthog-js` | Mock checkout screen + throttled video player with client-side event tracking |
-| Backend | FastAPI + `posthog-python` | Ticket routing API, payload validation, server-side rate limiting |
-| Analytics | ClickHouse / HogQL | Raw HogQL queries against the `events` table |
+- Frontend: React + `posthog-js`
+- Backend: FastAPI + `posthog-python`
+- Analytics: HogQL via SQL Insights
 
 ---
 
-## Project Structure
+## Structure
 
 ```
-hogdesk-lite/
-├── backend/
-│   ├── main.py          # FastAPI app: checkout + ticket routing + rate limiting
-│   └── requirements.txt # Python dependencies
-├── frontend/
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── src/
-│   │   ├── main.jsx          # App entry + posthog-js init
-│   │   ├── App.jsx           # Shell + navigation
-│   │   └── components/
-│   │       ├── CheckoutScreen.jsx  # Mock checkout with /api/v1/checkout calls
-│   │       └── VideoPlayer.jsx     # Throttled video tracking (5s intervals)
-│   └── public/
-├── sql/
-│   └── insights.sql        # ClickHouse SQL Insights queries
-└── README.md
+backend/
+  main.py          # FastAPI app
+  requirements.txt
+frontend/
+  src/
+    main.jsx       # posthog-js init
+    App.jsx        # Shell
+    components/
+      CheckoutScreen.jsx
+      VideoPlayer.jsx
+sql/
+  insights.sql     # HogQL queries
+tests/
+  behave/          # Python BDD tests
+  hogdesk.spec.ts  # Playwright E2E tests
 ```
 
 ---
 
-## Customer Problems & Solutions
+## Problem 1: Weekday Insight Breakdown
 
-### Problem 1: Weekday Insight Breakdown
-**Issue:** Customer wants to break down product insights by day of week; no zero-code toggle in the Trends UI.
+**Issue:** Trends UI has no day-of-week toggle.
 
-**Solution:** Use **SQL Insights** to run HogQL against the `events` table. Extract the day number with `toDayOfWeek()`, map to readable labels, and aggregate:
+**Solution:** Run HogQL in SQL Insights:
+
 ```sql
 SELECT
     CASE toDayOfWeek(timestamp)
@@ -62,16 +57,18 @@ WHERE timestamp >= now() - INTERVAL 30 DAY
 GROUP BY day_of_week
 ORDER BY day_of_week ASC
 ```
-Alternative: compute weekday client-side during payload construction and inject as a static event property (`day_of_week: "Monday"`).
 
-See: `sql/insights.sql`
+Alternative: compute `day_of_week` client-side and send as an event property.
+
+File: `sql/insights.sql`
 
 ---
 
-### Problem 2: Video Player Client Rate Limiting
-**Issue:** Browser console shows `[Posthog error]: This capture call is ignored due to client rate limiting.` when tracking inside an unthrottled `onTimeUpdate` loop.
+## Problem 2: Video Player Rate Limiting
 
-**Solution:** Implement client-side throttling so tracking fires at most once every 5 seconds instead of on every timeupdate event. `posthog-js` has a configurable `rate_limiting` option (default: 10 events/sec with a burst allowance), but raising it should not be the first move — the limit protects the user's browser. See `frontend/src/components/VideoPlayer.jsx`:
+**Issue:** `posthog-js` drops capture calls inside `onTimeUpdate` loops.
+
+**Solution:** Throttle client-side. `posthog-js` has `rate_limiting` (default 10 events/sec). Raise it only after throttling fails.
 
 ```javascript
 import { useRef } from 'react'
@@ -95,112 +92,92 @@ export function VideoPlayer({ src, userId }) {
 }
 ```
 
-The backend rate limiter in `backend/main.py` uses the same principle — 60 requests per user per minute, returning 429 when exceeded — and captures `capture_call_ignored` events to document rate limit collisions inside PostHog.
+Backend enforces 60 requests per user per minute and logs `capture_call_ignored` events.
+
+File: `frontend/src/components/VideoPlayer.jsx`
 
 ---
 
-### Problem 3: PII in a person property
-**Issue:** PII captured as a person property must be erased for GDPR compliance without corrupting historical aggregate metrics.
+## Problem 3: PII in a Person Property
+
+**Issue:** PII captured as a person property. GDPR requires removal.
 
 **Solution:**
-1. **Persons tab:** Search the affected profile. I haven't confirmed you can delete a single property in the UI — deleting the whole person is the documented path.
-2. **Delete associated events (optional):** When deleting the person, you can include their events — note this removes them from your counts too.
-3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
 
+1. Delete the person in the Persons tab. Include events if needed — this removes them from counts.
+2. Check if the PII value exists on historical events, not just the profile. I haven't confirmed single-property deletion in the UI.
+3. If PII is on historical events and you can't delete it without losing counts, escalate.
 
-## Getting Started
+File: `backend/main.py`
 
-### Backend (FastAPI)
+---
+
+## Run Locally
+
+Backend:
+
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
-API available at `http://localhost:8000`. Health check: `GET /api/v1/health`.
 
-Endpoints:
-- `POST /api/v1/checkout` — simulated payment with rate limiting
-- `POST /api/v1/tickets/route` — ticket routing by category
-- `GET /api/v1/health` — service health
+Frontend:
 
-### Frontend (React + Vite)
 ```bash
 cd frontend
 npm install
-npm run dev      # dev server at http://localhost:5173
-npm run build    # production build
+npm run dev
 ```
 
-Configure `posthog-js` in `src/main.jsx` with your PostHog API key and host.
-
-### SQL Insights
-Open PostHog → **Product analytics → New insight → SQL**, paste queries from `sql/insights.sql`, and run against your project's `events` table.
+Set `POSTHOG_API_KEY` in `backend/.env` and `VITE_POSTHOG_API_KEY` in `frontend/.env`.
 
 ---
 
-## Testing
+## Tests
 
-### Backend — BDD with `behave` (Python)
-
-Covers checkout, rate limiting, ticket routing, and PII capture:
+Backend:
 
 ```bash
 cd backend
-source .venv/bin/activate   # or: .venv/Scripts/activate on Windows
+source .venv/bin/activate
 behave
 ```
 
-All 7 scenarios pass against the running FastAPI server at `http://localhost:8000`.
-
-### Frontend + Backend API — E2E with Playwright (Node)
-
-Covers all 3 customer problems end-to-end:
-
-| Problem | Test | What it verifies |
-|---------|------|------------------|
-| 1. Weekday breakdown | `hogdesk.spec.ts` → "Problem 1" | Checkout + ticket events are captured via API |
-| 2. Video rate limiting | `hogdesk.spec.ts` → "Problem 2" | Video player throttles tracking without breaching client rate limits |
-| 3. PII/GDPR | `hogdesk.spec.ts` → "Problem 3" | Ticket containing PII is accepted for later deletion |
+Frontend:
 
 ```bash
 cd frontend
 npm install
-npm test           # runs Playwright E2E tests
+npm test
 ```
 
-**Requirements:** Node 20+ for Playwright, Python 3.11+ for the backend.
+Playwright requires Node 20+.
 
 ---
 
-## Continuous Integration
+## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR:
+`.github/workflows/ci.yml` runs on push/PR:
 
-| Job | What it runs | Requirements |
-|-----|-------------|--------------|
-| `backend` | `behave` BDD tests against FastAPI | Python 3.11 + `requirements.txt` |
-| `frontend` | Playwright E2E tests | Node 20 + Chromium browsers |
+- `backend`: `behave` tests (Python 3.11)
+- `frontend`: Playwright tests (Node 20)
 
-**Secrets:** Add `POSTHOG_API_KEY` in your GitHub repository Settings → Secrets and variables → Actions. The frontend tests use it to initialize `posthog-js`.
+Secret: `POSTHOG_API_KEY` in GitHub Settings → Secrets → Actions.
 
-**Locally — Run Everything at Once:**
+---
+
+## Local Test Runner
 
 ```bash
-# From project root (starts backend + frontend, runs Playwright, cleans up)
 chmod +x test-local.sh
 bash test-local.sh
-
-# Or via npm
-cd frontend
-npm run test:local
 ```
 
-**Requirements:** Node 20+ for Playwright, Python 3.11+ for the backend.
-
+Starts backend and frontend, runs Playwright, cleans up.
 
 ---
 
 ## License
 
-
-MIT — built as a portfolio demonstration for the PostHog TSE role.
+MIT — portfolio for PostHog TSE role.

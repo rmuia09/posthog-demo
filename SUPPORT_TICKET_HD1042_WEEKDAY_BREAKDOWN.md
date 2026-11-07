@@ -1,38 +1,15 @@
-# Practice Ticket HD-1042 — Breakdown Insight by Day of Week
+# Ticket HD-1042 — Weekday Breakdown
 
-*Practice ticket written from a sample question, not a real customer.*
+Practice ticket. Not a real customer.
 
-**Status:** Practice  
-**Priority:** Medium  
-**Type:** Product Analytics  
-**Assigned to:** R. Muia  
-**Created:** 2026-11-07
+**Issue:** Customer wants event volume by day of week. Trends UI has no toggle for this.
 
----
+**What I checked:**
+- Trends UI: linear time groupings only (hour/day/week/month). No weekday toggle found.
+- Storage: PostHog queries events through HogQL. SQL Insights runs raw HogQL against `events`. `toDayOfWeek(timestamp)` extracts day number (1 = Monday … 7 = Sunday).
+- Time zone: not tested. An event near midnight local time may land on a different weekday depending on server time zone.
 
-## Customer message
-
-Hi,
-
-I want to break down one of our product insights by day of the week — basically see which days (Monday, Tuesday, etc.) have the most events. I checked the Trends UI but I can't find a toggle for this. Is it possible in PostHog?
-
-Thanks
-
----
-
-## What I checked
-
-**Trends UI:** The default Trends UI does linear time groupings (hour/day/week/month). I could not find a native "group by day of week" option in the UI.
-
-**Storage layer:** PostHog queries events through HogQL (ClickHouse-compatible SQL). SQL Insights lets you run raw HogQL against the `events` table, where `toDayOfWeek(timestamp)` extracts the day number (1 = Monday … 7 = Sunday).
-
-**Time zone:** I didn't test how `toDayOfWeek()` handles time zone boundaries. An event captured near midnight in your local time might land on a different weekday depending on the project's server time zone — worth checking if day boundaries matter for your use case.
-
----
-
-## Solution
-
-Run in **Product analytics → New insight → SQL**:
+**Solution:**
 
 ```sql
 SELECT
@@ -52,32 +29,11 @@ GROUP BY day_of_week
 ORDER BY day_of_week ASC
 ```
 
-**No-SQL alternative:** Compute the weekday client-side when capturing and send it as an event property (`day_of_week: "Saturday"`), then filter by that property in Trends. Requires a code change but works in the standard UI going forward.
+No-SQL alternative: send `day_of_week` as an event property from the frontend and filter in Trends. Requires code change.
 
----
-
-## Reply to customer
-
-Hey,
-
-PostHog doesn't have a day-of-week toggle in the default Trends UI — at least, I couldn't find one — but you can use SQL Insights to group events by day of week:
-
-[SQL query]
-
-If you'd rather stay out of SQL, you can also send `day_of_week` as an event property from your frontend and filter on it in Trends. That needs a small code change though.
-
-Let me know how you want to proceed.
-
----
-
-## Notes
-
-- Saturday's high count (235 events) in my test data is likely just my own test traffic, since today is Saturday. I didn't investigate it as a spike or campaign.
-- I don't know if SQL Insights availability depends on your plan tier.
-
----
-
-## Related
+**Notes:**
+- Saturday's 235 events in test data is likely my own test traffic (ran on a Saturday). Not investigated as a spike.
+- I don't know if SQL Insights availability depends on plan tier.
 
 Repo: https://github.com/rmuia09/posthog-demo  
 Query: `sql/insights.sql`
