@@ -127,3 +127,4 @@ jobs:
           path: |
             frontend/test-results/
             frontend/playwright-report/
+            frontend/report.xml
