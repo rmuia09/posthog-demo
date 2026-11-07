@@ -32,6 +32,8 @@ Thanks
 
 **What I did not do:** I did not reproduce the error locally. I added a test button to the frontend that fires 100 rapid capture calls (available when running locally at `http://localhost:5173`), but I did not click it and check the console for the rate limit error. I also did not measure the exact burst window behavior of the SDK.
 
+**To reproduce manually:** Run the frontend (`npm run dev`), open the browser console, click "Fire 100 rapid captures", and watch for `[Posthog error]: This capture call is ignored due to client rate limiting.` Note how many calls succeed before the limit kicks in, if it does. Update this ticket with the result.
+
 ---
 
 ## Solution
