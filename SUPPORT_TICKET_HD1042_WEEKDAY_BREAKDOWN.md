@@ -26,7 +26,7 @@ Thanks
 
 **Storage layer:** PostHog queries events through HogQL (ClickHouse-compatible SQL). SQL Insights lets you run raw HogQL against the `events` table, where `toDayOfWeek(timestamp)` extracts the day number (1 = Monday … 7 = Sunday).
 
-**Time zone:** `toDayOfWeek()` uses the ClickHouse server time zone unless you convert explicitly. I didn't verify the project's server time zone, so day boundaries may differ from the customer's local time.
+**Time zone:** I didn't test how `toDayOfWeek()` handles time zone boundaries. An event captured near midnight in your local time might land on a different weekday depending on the project's server time zone — worth checking if day boundaries matter for your use case.
 
 ---
 
@@ -52,7 +52,7 @@ GROUP BY day_of_week
 ORDER BY day_of_week ASC
 ```
 
-**Zero-code alternative:** Compute the weekday client-side when capturing and send it as an event property, then filter by that property in Trends. Requires a code change but works in the standard UI going forward.
+**No-SQL alternative:** Compute the weekday client-side when capturing and send it as an event property (`day_of_week: "Saturday"`), then filter by that property in Trends. Requires a code change but works in the standard UI going forward.
 
 ---
 
@@ -60,7 +60,7 @@ ORDER BY day_of_week ASC
 
 Hey,
 
-PostHog doesn't have a day-of-week toggle in the default Trends UI, but you can use SQL Insights to group events by day of week:
+PostHog doesn't have a day-of-week toggle in the default Trends UI — at least, I couldn't find one — but you can use SQL Insights to group events by day of week:
 
 [SQL query]
 

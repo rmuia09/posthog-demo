@@ -48,14 +48,17 @@ export function VideoPlayer({ src, userId }) {
     const lastTracked = useRef(0)
 
     const handleTimeUpdate = (event) => {
-        const currentTime = Math.floor(event.target.currentTime)
+        const now = Date.now()
 
-        if (currentTime % 5 === 0 && currentTime !== lastTracked.current) {
+        // Time-based throttle: capture if at least 5 seconds have passed
+        // since the last event. This survives seeks and re-renders better
+        // than a modulo check on playback position.
+        if (now - lastTracked.current >= 5000) {
             posthog.capture('video_progress_tracked', {
                 user_id: userId,
-                playback_position_seconds: currentTime,
+                playback_position_seconds: Math.floor(event.target.currentTime),
             })
-            lastTracked.current = currentTime
+            lastTracked.current = now
         }
     }
 
@@ -63,7 +66,7 @@ export function VideoPlayer({ src, userId }) {
 }
 ```
 
-This keeps call volume around 12 per minute per video — well under the default 10/sec limit — while still capturing meaningful playback milestones.
+This keeps call volume well under the default 10/sec limit while still capturing meaningful playback milestones, and it handles seeks gracefully since it's based on wall-clock time rather than playback position.
 
 ### Alternative: raise the limit
 
@@ -71,12 +74,14 @@ If throttling genuinely isn't enough, you can increase the limit in `posthog.ini
 
 ```javascript
 posthog.init('YOUR_API_KEY', {
-    rate_limiting: 20, // events per second
-    // burst scales automatically (10x)
+    rate_limiting: {
+        events_per_second: 20,
+        events_burst_limit: 200,
+    },
 })
 ```
 
-Only do this after confirming you actually need more than 10 events/sec, and understand you're opting out of a safety guardrail.
+I set both values explicitly because `rate_limiting` is an object, not a number. Only do this after confirming you actually need more than 10 events/sec, and understand you're opting out of a safety guardrail.
 
 ---
 
@@ -88,7 +93,7 @@ The rate limit in posthog-js defaults to 10 capture calls per second (with a bur
 
 Since `onTimeUpdate` only fires about 4 times per second, a single video shouldn't normally hit the limit. If you're seeing the error, something else is probably firing capture calls too. Can you share what else is tracking on that page?
 
-In the meantime, here's a throttled version of your video player that logs progress every 5 seconds:
+In the meantime, here's a throttled version of your video player that logs progress at most once every 5 seconds:
 
 [code]
 

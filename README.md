@@ -12,7 +12,7 @@ Mirrors PostHog's core tech stack (**Python, JavaScript/React, SQL**) and reprod
 |-------|------|---------|
 | Frontend | React + `posthog-js` | Mock checkout screen + throttled video player with client-side event tracking |
 | Backend | FastAPI + `posthog-python` | Ticket routing API, payload validation, server-side rate limiting |
-| Analytics | ClickHouse / SQL Insights | Raw SQL queries against the `events` table |
+| Analytics | ClickHouse / SQL Insights | Raw HogQL queries against the `events` table |
 
 ---
 
@@ -73,21 +73,29 @@ See: `sql/insights.sql`
 ### Problem 2: Video Player Client Rate Limiting
 **Issue:** Browser console shows `[Posthog error]: This capture call is ignored due to client rate limiting.` when tracking inside an unthrottled `onTimeUpdate` loop.
 
-**Solution:** Implement client-side throttling so tracking fires every 5 seconds instead of every millisecond. See `frontend/src/components/VideoPlayer.jsx`:
+**Solution:** Implement client-side throttling so tracking fires at most once every 5 seconds instead of every millisecond. `posthog-js` has a configurable `rate_limiting` option (default: 10 events/sec with a burst allowance), but raising it should not be the first move — the limit protects the user's browser. See `frontend/src/components/VideoPlayer.jsx`:
 
 ```javascript
-const handleTimeUpdate = (event) => {
-    const currentTime = Math.floor(event.target.currentTime);
-    if (currentTime % 5 === 0 && currentTime !== lastTracked) {
-        posthog.capture('video_progress_tracked', {
-            user_id: userId,
-            playback_position_seconds: currentTime,
-        });
-    }
-};
-```
+import { useRef } from 'react'
+import posthog from 'posthog-js'
 
-The rate limit is an immutable SDK safety mechanism — the fix is optimizing the integration, not removing the limit.
+export function VideoPlayer({ src, userId }) {
+    const lastTracked = useRef(0)
+
+    const handleTimeUpdate = (event) => {
+        const now = Date.now()
+        if (now - lastTracked.current >= 5000) {
+            posthog.capture('video_progress_tracked', {
+                user_id: userId,
+                playback_position_seconds: Math.floor(event.target.currentTime),
+            })
+            lastTracked.current = now
+        }
+    }
+
+    return <video src={src} onTimeUpdate={handleTimeUpdate} controls />
+}
+```
 
 ---
 
@@ -95,21 +103,12 @@ The rate limit is an immutable SDK safety mechanism — the fix is optimizing th
 **Issue:** PII captured as a person property must be erased for GDPR compliance without corrupting historical aggregate metrics.
 
 **Solution:** Multi-step isolation strategy:
-1. **Dashboard:** Persons tab → search profile → delete/overwrite sensitive properties.
-2. **API:** Targeted payload update via PostHog's API to purge values.
-3. **Historical Purge:** Data Management → Deletion Requests → deletion condition targeting leaked values.
+1. **Persons tab:** Search the affected profile, delete or overwrite the sensitive property.
+2. **Delete associated events (optional):** When deleting the person, you can include their events — note this removes them from your counts too.
+3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
 
 Server-side validation example in `backend/main.py` captures `capture_call_ignored` events when rate limits collide, documenting the collision cleanly inside PostHog.
 
----
-
-## Alignment with PostHog Principles
-
-- **Dual-Language Proficiency:** Async JavaScript/React UI → structured Python/FastAPI handler loops.
-- **Engineering-First Support Mindset:** Resolves root causes via client-side optimization rather than suggesting removal of system rate limits.
-- **Clear Communication:** Translates ClickHouse aggregation, API limits, and database immutability into step-by-step documentation.
-
----
 
 ## Getting Started
 
@@ -137,7 +136,7 @@ npm run build    # production build
 Configure `posthog-js` in `src/main.jsx` with your PostHog API key and host.
 
 ### SQL Insights
-Open PostHog → **Tools → SQL Insights**, paste queries from `sql/insights.sql`, and run against your project's `events` table.
+Open PostHog → **Product analytics → New insight → SQL**, paste queries from `sql/insights.sql`, and run against your project's `events` table.
 
 ---
 
@@ -162,16 +161,16 @@ Covers all 3 customer problems end-to-end:
 | Problem | Test | What it verifies |
 |---------|------|------------------|
 | 1. Weekday breakdown | `hogdesk.spec.ts` → "Problem 1" | Checkout + ticket events are captured via API |
-| 2. Video rate limiting | `hogdesk.spec.ts` → "Problem 2" | Video player throttles tracking (no rate-limit console errors) |
+| 2. Video rate limiting | `hogdesk.spec.ts` → "Problem 2" | Video player throttles tracking without breaching client rate limits |
 | 3. PII/GDPR | `hogdesk.spec.ts` → "Problem 3" | Ticket containing PII is accepted for later deletion |
 
 ```bash
 cd frontend
-npm install        # requires Node 20+ for Playwright
+npm install
 npm test           # runs Playwright E2E tests
 ```
 
-**Note:** Playwright requires **Node 20+**. Your system has Node 16 — upgrade Node (via nvm, n, or official installer) before running `npm test`. The backend `behave` tests work on the current Python 3.14 setup.
+**Requirements:** Node 20+ for Playwright, Python 3.11+ for the backend.
 
 ---
 

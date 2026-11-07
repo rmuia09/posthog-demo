@@ -60,7 +60,9 @@ To remove the PII:
 2. When deleting, you can include their events in the same request — it's processed asynchronously.
 3. One thing to check: is the PII only on the person profile, or is it also in historical events? I haven't confirmed that yet, so it's worth verifying before we assume the person deletion scrubs everything.
 
-Deleting the person removes the person attributes; your aggregate event counts stay intact unless you also choose to delete the events.
+Deleting the person removes the person attributes; your aggregate event counts stay intact unless you also choose to delete the events. Deleting a person's events also removes them from your counts, so you'll need to decide which matters more.
+
+If the leaked value exists on historical events and you can't remove it without losing counts you need to keep, say so — I'd escalate to find out what's possible rather than delete something you can't get back.
 
 Let me know what you find on step 3 and I can help with the rest.
 
