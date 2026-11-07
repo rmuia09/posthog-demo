@@ -1,0 +1,6 @@
+fastapi==0.95.2
+uvicorn==0.22.0
+posthog==3.7.0
+pydantic==1.10.27
+requests==2.31.0
+behave==1.2.6
