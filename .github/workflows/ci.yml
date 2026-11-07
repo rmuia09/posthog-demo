@@ -44,23 +44,13 @@ jobs:
           curl -sf -X POST http://localhost:8000/api/v1/tickets/route \
             -H 'Content-Type: application/json' \
             -d '{"user_id":"ci_weekday_test","category":"billing","description":"CI generated event for weekday analysis","priority":"normal"}'
-          # Flush posthog-python async batch before CI job ends
-          python -c "
-import os
-from posthog import Posthog
-ph = Posthog(os.getenv('POSTHOG_API_KEY'), host='https://us.i.posthog.com')
-ph.flush()
-ph.shutdown()
-print('Events flushed to PostHog')
-" 2>&1
+          python -c "import os; from posthog import Posthog; ph=Posthog(os.getenv('POSTHOG_API_KEY'), host='https://us.i.posthog.com'); ph.flush(); ph.shutdown(); print('Events flushed to PostHog')"
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
       - name: Run behave BDD tests
         working-directory: ./backend/tests
         run: behave
-        env:
-          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
