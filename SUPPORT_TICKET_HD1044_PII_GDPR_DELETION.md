@@ -38,7 +38,7 @@ POST /api/v1/tickets/route
 
 **Person vs event:** I confirmed the email was stored on the person profile. I did **not** confirm whether the leaked value is copied onto historical events themselves, not just the person. I don't know yet whether deleting the person also scrubs the value from event properties — that would need testing against the actual leaked string.
 
-**Deletion flow:** In PostHog, you can delete a person from the Persons page. There is an option to delete their events too (`delete_events=true`), and deletion is processed asynchronously. I did **not** confirm the exact Deletion Requests workflow with conditions, so I won't present it as a verified step.
+**Deletion flow:** In PostHog, you can delete a person from the Persons page. There is an option to delete their events too (`delete_events=true`), and deletion is processed asynchronously. I did **not** confirm the exact Deletion Requests workflow with conditions, so I won't present it as a verified step. I also haven't confirmed whether the UI lets you delete a single property on a person profile — deleting the whole person is the path I'd describe until I test it.
 
 ---
 

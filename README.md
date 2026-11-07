@@ -1,8 +1,6 @@
 # HogDesk Lite — Engineering Showcase & Support Blueprint
 
-A lightweight, fully instrumented transactional ticketing router demonstrating a hybrid engineering-and-support mindset, built as a technical portfolio showcase for the **Technical Support Engineer** role at **PostHog**.
-
-Mirrors PostHog's core tech stack (**Python, JavaScript/React, SQL**) and reproduces, investigates, and resolves real-world customer problems handled by the global support team.
+HogDesk Lite is a small ticketing router I built to show how I approach PostHog support problems. It captures events through a React frontend and FastAPI backend, then runs SQL Insights against the event data.
 
 ---
 
@@ -46,7 +44,7 @@ hogdesk-lite/
 ### Problem 1: Weekday Insight Breakdown
 **Issue:** Customer wants to break down product insights by day of week; no zero-code toggle in the Trends UI.
 
-**Solution:** Use **SQL Insights** to query ClickHouse directly. Extract the day number with `toDayOfWeek()`, map to readable labels, and aggregate:
+**Solution:** Use **SQL Insights** to run HogQL against the `events` table. Extract the day number with `toDayOfWeek()`, map to readable labels, and aggregate:
 ```sql
 SELECT
     CASE toDayOfWeek(timestamp)
@@ -97,17 +95,17 @@ export function VideoPlayer({ src, userId }) {
 }
 ```
 
+The backend rate limiter in `backend/main.py` uses the same principle — 60 requests per user per minute, returning 429 when exceeded — and captures `capture_call_ignored` events to document rate limit collisions inside PostHog.
+
 ---
 
 ### Problem 3: Accidental PII Leaks & GDPR Deletion
 **Issue:** PII captured as a person property must be erased for GDPR compliance without corrupting historical aggregate metrics.
 
 **Solution:** Multi-step isolation strategy:
-1. **Persons tab:** Search the affected profile, delete or overwrite the sensitive property.
+1. **Persons tab:** Search the affected profile. I haven't confirmed you can delete a single property in the UI — deleting the whole person is the documented path.
 2. **Delete associated events (optional):** When deleting the person, you can include their events — note this removes them from your counts too.
 3. **Confirm scope:** Check whether the PII value exists on historical events, not just the person profile. If it does, you'll need to address those events separately.
-
-Server-side validation example in `backend/main.py` captures `capture_call_ignored` events when rate limits collide, documenting the collision cleanly inside PostHog.
 
 
 ## Getting Started

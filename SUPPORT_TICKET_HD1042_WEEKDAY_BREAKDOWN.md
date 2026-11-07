@@ -73,7 +73,7 @@ Let me know how you want to proceed.
 ## Notes
 
 - Saturday's high count (235 events) in my test data is likely just my own test traffic, since today is Saturday. I didn't investigate it as a spike or campaign.
-- I didn't confirm whether your specific project has SQL Insights enabled (plan-dependent).
+- I don't know if SQL Insights availability depends on your plan tier.
 
 ---
 
