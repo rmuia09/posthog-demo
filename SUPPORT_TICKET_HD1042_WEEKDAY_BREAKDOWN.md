@@ -1,52 +1,29 @@
-# Support Ticket: HD-1042 — Breakdown Product Insight by Weekday
+# Support Ticket HD-1042 — Breakdown Insight by Day of Week
 
-**Ticket ID:** HD-1042  
 **Status:** Resolved  
 **Priority:** Medium  
-**Category:** Product Analytics / Insights  
-**Channel:** Email  
-**Customer:** Acme Corp (Enterprise)  
-**Engineer:** Richard Muia (TSE Candidate)  
-**Date:** 2026-11-07
+**Type:** Product Analytics  
+**Customer:** Acme Corp  
+**Assigned to:** R. Muia  
+**Created:** 2026-11-07
 
 ---
 
-## Customer Problem
+## Customer message
 
-A customer wants to break down a product insight by the day of the week to identify which specific days (e.g., Monday, Tuesday, etc.) capture the highest volume of user events.
+Hi,
 
-They have reviewed the standard Trends UI and cannot find a zero-code configuration toggle to group events by day of week. They are asking whether this is possible in PostHog and, if so, how to achieve it.
+I want to break down one of our product insights by day of the week — basically see which days (Monday, Tuesday, etc.) have the most events. I checked the Trends UI but I can't find a toggle for this. Is it possible in PostHog?
+
+Thanks
 
 ---
 
 ## Investigation
 
-### 1. Reviewed the Trends UI
-The default Trends UI supports linear time series groupings (hour, day, week, month) but does not expose a native "group by day of week" toggle. Selecting "Day" breaks down by calendar date, not by weekday name.
+The default Trends UI does linear time groupings (hour/day/week/month) but doesn't have a "group by weekday" option. PostHog stores events in ClickHouse, so `toDayOfWeek()` works on the `timestamp` column directly in SQL Insights.
 
-### 2. Evaluated PostHog's Storage Layer
-PostHog stores captured events in ClickHouse, a columnar OLAP database optimized for analytical queries. The `events` table includes a standard `timestamp` column, and ClickHouse provides date/time functions such as `toDayOfWeek()` that extract temporal components directly from that field.
-
-### 3. Tested via SQL Insights
-SQL Insights allows raw ClickHouse queries against the `events` table. We validated the approach in **HogDesk Lite**, a technical portfolio showcase mirroring PostHog's stack (React + `posthog-js`, FastAPI + `posthog-python`, ClickHouse / SQL Insights).
-
-### 4. Generated Test Events
-Using the HogDesk Lite backend API, we captured checkout and ticket events over several days:
-
-```bash
-POST /api/v1/checkout   -> event: payment_submitted
-POST /api/v1/tickets/route -> event: ticket_routed
-```
-
-These events were ingested into PostHog and visible in **Live Events**.
-
----
-
-## Solution
-
-### Primary: SQL Insights
-
-Navigate to **Product analytics → New insight → SQL** and run:
+Tested with sample data captured through the HogDesk Lite backend:
 
 ```sql
 SELECT
@@ -66,61 +43,63 @@ GROUP BY day_of_week
 ORDER BY day_of_week ASC
 ```
 
-**What this query does:**
-- `toDayOfWeek(timestamp)` extracts the day number (1 = Monday … 7 = Sunday) from the standard `timestamp` field
-- `CASE` maps numeric days to human-readable labels
-- `count(*)` aggregates event volume per weekday
-- `WHERE timestamp >= now() - INTERVAL 30 DAY` scopes to the last 30 days
-- `GROUP BY day_of_week` aggregates; `ORDER BY day_of_week ASC` keeps the week in order
+### Results
 
-**Result from HogDesk Lite test data:**
+| Day of Week | Events |
+|-------------|--------|
+| Monday | 24 |
+| Tuesday | 24 |
+| Wednesday | 24 |
+| Thursday | 18 |
+| Friday | 24 |
+| Saturday | 235 |
+| Sunday | 27 |
 
-| Day of Week | Total Event Count |
-|-------------|-------------------|
-| 1. Monday | 24 |
-| 2. Tuesday | 24 |
-| 3. Wednesday | 24 |
-| 4. Thursday | 18 |
-| 5. Friday | 24 |
-| 6. Saturday | 235 |
-| 7. Sunday | 27 |
-
-**Insight:** Saturday captured the highest volume (235 events), clearly surfacing a weekday pattern that the standard Trends UI could not show without SQL.
+Saturday is the clear outlier here — probably worth flagging to the customer in case it's a bot spike or weekend campaign.
 
 ---
 
-## Alternative: Zero-Code Client-Side Workaround
+## Alternative (no SQL)
 
-If the customer cannot use SQL Insights, compute the weekday client-side during payload construction and send it as a static event property:
+If they don't want to use SQL Insights, they can compute the weekday client-side when capturing and store it as an event property:
 
 ```javascript
 posthog.capture('event_name', {
     day_of_week: new Date().toLocaleDateString('en-US', { weekday: 'long' })
-});
+})
 ```
 
-Then filter by `day_of_week` in the standard Trends UI. This requires an instrumentation change but avoids SQL entirely.
+Then filter by that property in Trends. Trade-off: requires a code change, but works in the standard UI going forward.
 
 ---
 
-## Recommendation to Customer
+## Reply to customer
 
-1. **Use SQL Insights** for ad-hoc weekday breakdowns without code changes.
-2. **Save the insight to a dashboard** so the team can revisit it without re-running the query.
-3. **Consider client-side `day_of_week` property injection** if they need this breakdown frequently in the standard Trends UI.
+Hey,
 
----
+PostHog doesn't have a day-of-week toggle in the default Trends UI, but your events live in ClickHouse so you can break them down by weekday instantly with SQL Insights:
 
-## References
+[SQL query]
 
-- **Project repo:** https://github.com/rmuia09/posthog-demo
-- **SQL query file:** `sql/insights.sql`
-- **Backend API:** `backend/main.py` (FastAPI + `posthog-python`)
-- **Frontend SDK:** `frontend/src/main.jsx` (`posthog-js` init)
-- **Event capture examples:** `frontend/src/components/CheckoutScreen.jsx`, `VideoPlayer.jsx`
+Saved that as an insight so you can revisit it on a dashboard. Saturday came out highest in our test data (235 events) — let me know if you want help digging into what's driving that.
+
+If you'd rather stay out of SQL, you can also send `day_of_week` as an event property from your frontend and filter on it in Trends. That needs a small code change though.
+
+Let me know how you want to proceed.
 
 ---
 
-## Closing Note to Customer
+## Internal notes
 
-> "PostHog doesn't expose a day-of-week toggle in the default Trends UI, but because your events are stored in ClickHouse, you can break them down by weekday instantly using SQL Insights. The query below groups event volume by day name over the last 30 days — Saturday came out highest in our test dataset. Let us know if you'd like help saving this to a dashboard or setting up the client-side property workaround."
+- Customer doesn't have SQL access enabled? Check plan tier before suggesting SQL Insights.
+- If they're on a lower tier, the client-side property workaround is the only path.
+- Saturday spike (235 vs ~24 other days) is worth a follow-up — could be legitimate weekend usage or automated traffic.
+
+---
+
+## Related
+
+Repo: https://github.com/rmuia09/posthog-demo  
+Query: `sql/insights.sql`  
+Backend: `backend/main.py`  
+Frontend SDK: `frontend/src/main.jsx`
