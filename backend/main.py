@@ -46,7 +46,7 @@ async def process_checkout(payload: CheckoutPayload, request: Request):
     user_history = [t for t in user_history if current_time - t < 60]
 
     if len(user_history) >= CLIENT_LIMIT_PER_MINUTE:
-        posthog.capture(user_id, "capture_call_ignored", {
+        posthog.capture("capture_call_ignored", distinct_id=user_id, properties={
             "reason": "client_rate_limiting",
             "current_rate_per_minute": len(user_history),
             "endpoint": "/api/v1/checkout",
@@ -59,7 +59,7 @@ async def process_checkout(payload: CheckoutPayload, request: Request):
     user_history.append(current_time)
     request_tracker[user_id] = user_history
 
-    posthog.capture(user_id, "payment_submitted", {
+    posthog.capture("payment_submitted", distinct_id=user_id, properties={
         "currency": payload.currency,
         "amount": payload.amount,
         "environment": payload.environment,
@@ -81,7 +81,7 @@ async def route_ticket(payload: TicketPayload, request: Request):
     user_history = [t for t in user_history if current_time - t < 60]
 
     if len(user_history) >= CLIENT_LIMIT_PER_MINUTE:
-        posthog.capture(user_id, "capture_call_ignored", {
+        posthog.capture("capture_call_ignored", distinct_id=user_id, properties={
             "reason": "client_rate_limiting",
             "current_rate_per_minute": len(user_history),
             "endpoint": "/api/v1/tickets/route",
@@ -97,7 +97,7 @@ async def route_ticket(payload: TicketPayload, request: Request):
     category = payload.category.lower()
     route_email = TICKET_ROUTES.get(category, TICKET_ROUTES["general"])
 
-    posthog.capture(user_id, "ticket_routed", {
+    posthog.capture("ticket_routed", distinct_id=user_id, properties={
         "category": category,
         "priority": payload.priority,
         "route_email": route_email,
