@@ -1,37 +1,43 @@
 # Architecture
 
-Data flows from a React frontend through a FastAPI backend into PostHog, then gets queried with HogQL.
+Data flows from React frontend through FastAPI backend into PostHog, queried with HogQL.
 
 ---
 
-## Frontend — React + posthog-js
+## Stack
 
-**React** builds the UI: a mock checkout screen and an interactive video player.
+- Frontend: React + posthog-js
+- Backend: FastAPI + posthog-python
+- Analytics: HogQL via SQL Insights
 
-**posthog-js** is the PostHog JavaScript SDK. It initializes with your project API key and captures events from the browser:
+---
 
-- `posthog.init()` — configures the client with API key and host
-- `posthog.capture()` — sends an event to PostHog
+## Frontend
+
+**React** builds the UI: checkout screen and video player.
+
+**posthog-js** captures browser events:
+- `posthog.init()` — sets API key and host
+- `posthog.capture()` — sends an event
 - `posthog.isFeatureEnabled()` — checks feature flags
 
-The frontend sends checkout submissions, video progress events, and page navigation events to PostHog. It also enforces client-side throttling on `onTimeUpdate` so the video player doesn't flood the SDK with capture calls.
+Sends checkout submissions, video progress, and navigation events to PostHog. Throttles `onTimeUpdate` so the video player doesn't flood the SDK.
 
-## Backend — FastAPI + posthog-python
+## Backend
 
-**FastAPI** is the async Python web framework. It exposes two endpoints:
+**FastAPI** exposes two endpoints:
+- `POST /api/v1/checkout` — simulates payment, rate limits at 60 requests/user/minute, captures `payment_submitted`
+- `POST /api/v1/tickets/route` — routes support tickets, same rate limit, captures `ticket_routed`
 
-- `POST /api/v1/checkout` — simulates a payment, enforces per-user rate limiting (60 requests/minute), captures `payment_submitted` events
-- `POST /api/v1/tickets/route` — routes support tickets by category, enforces the same rate limit, captures `ticket_routed` events
+**posthog-python** captures server-side events to the same PostHog project as the frontend. Logs `capture_call_ignored` when rate limit hits.
 
-**posthog-python** is the PostHog Python SDK. It captures server-side events to the same PostHog project as the frontend, so checkout and ticket events appear alongside frontend events in PostHog. It also logs `capture_call_ignored` events when the backend rate limit is hit.
+## Analytics
 
-## Analytics — HogQL via SQL Insights
+**HogQL** is PostHog's SQL dialect (ClickHouse-compatible). Query the `events` table directly.
 
-**HogQL** is PostHog's SQL dialect (ClickHouse-compatible). You write queries against the `events` table directly.
+**SQL Insights** is the PostHog UI tool. Open Product analytics → New insight → SQL, paste query, run.
 
-**SQL Insights** is the PostHog UI tool that runs HogQL queries. You open Product analytics → New insight → SQL, paste a query, and see results as a table or chart.
-
-Example query breaks down event volume by day of week:
+Example — event volume by day of week:
 
 ```sql
 SELECT CASE toDayOfWeek(timestamp)
@@ -50,21 +56,12 @@ GROUP BY day_of_week
 ORDER BY day_of_week ASC
 ```
 
-## Data Flow
-
-1. User interacts with React frontend (checkout, video play)
-2. `posthog-js` captures events and sends them to PostHog
-3. User submits checkout or ticket through FastAPI backend
-4. `posthog-python` captures server-side events to the same PostHog project
-5. Both frontend and backend events land in the `events` table
-6. Run HogQL queries in SQL Insights to analyze event volume by weekday, hour, category, etc.
-
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `frontend/src/main.jsx` | Initializes posthog-js with API key |
-| `frontend/src/components/CheckoutScreen.jsx` | Mock checkout form, posts to backend |
-| `frontend/src/components/VideoPlayer.jsx` | Throttled video player with posthog-js capture |
-| `backend/main.py` | FastAPI app with checkout and ticket routing endpoints |
+| `frontend/src/main.jsx` | Initializes posthog-js |
+| `frontend/src/components/CheckoutScreen.jsx` | Mock checkout form |
+| `frontend/src/components/VideoPlayer.jsx` | Throttled video player with posthog-js |
+| `backend/main.py` | FastAPI app with checkout and ticket routing |
 | `sql/insights.sql` | HogQL queries for SQL Insights |
