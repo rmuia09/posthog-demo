@@ -54,6 +54,13 @@ jobs:
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
+      - name: Run PII property deletion test
+        working-directory: ./backend/tests
+        run: python test_pii_property_deletion.py
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+
       - name: Upload behave test results
         uses: actions/upload-artifact@v4
         if: always()
